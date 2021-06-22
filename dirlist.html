@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <link rel="preconnect" href="https://fonts.gstatic.com">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+
+    <link href="https://fonts.googleapis.com/css2?family=Roboto&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+            margin: 0;
+        }
+
+        main {
+            display: flex;
+            padding: 20px;
+            flex-flow: column;
+            gap: 5px;
+            height: calc(89 * var(--vh));
+            overflow: auto;
+            box-sizing: border-box;
+        }
+
+        .emptyDir {
+            opacity: .5;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .tile {
+            display: grid;
+            grid-template-columns: 24px 1fr;
+            height: 50px;
+            grid-gap: 10px;
+            background: #eee;
+            border-radius: 5px;
+            padding: 10px;
+            box-sizing: border-box;
+            transition: background .2s;
+            cursor: pointer;
+        }
+
+        .tile:hover,
+        .tile:focus {
+            outline: 0;
+            background: #ddd;
+        }
+
+        .tile span {
+            display: flex;
+            align-items: center;
+        }
+
+        nav {
+            height: calc(10*var(--vh));
+            box-sizing: border-box;
+            display: flex;
+            padding: 20px;
+        }
+
+        .pathpart {
+            cursor: pointer;
+            padding-right: 5px;
+            display: flex;
+            align-items: center;
+            background: #fff;
+            transition: background .2s;
+            min-width: calc(10*var(--vh) - 40px);
+            border-radius: 5px;
+            justify-content: center;
+        }
+
+        .pathfoldername {
+            border-bottom: 1px solid transparent;
+        }
+
+        .pathpart:focus {
+            outline: 0;
+            background: #ddd;
+        }
+
+        .pathpart:hover .pathfoldername,
+        .pathpart:focus .pathfoldername {
+            border-bottom: 1px solid;
+        }
+
+    </style>
+</head>
+
+<body>
+    <nav role="navigation"></nav>
+    <main role="list"></main>
+    <script>
+        class Tile {
+            constructor(name, isFile, isDirectory, isSymbolicLink, mimeType) {
+                this.name = name;
+                this.isFile = isFile;
+                this.isDirectory = isDirectory;
+                this.isSymbolicLink = isSymbolicLink;
+                this.mimeType = mimeType;
+
+                this.generateElement();
+            }
+
+            getNextTile() {
+                let index = Math.min(tiles.indexOf(this) + 1, tiles.length - 1);
+                return tiles[index];
+            }
+
+            getPreviousTile() {
+                let index = Math.max(tiles.indexOf(this) - 1, 0);
+                return tiles[index];
+            }
+
+            handleKeyPress(e) {
+                switch (e.key) {
+                    case "ArrowDown":
+                        console.log(this.getNextTile().elmnt);
+                        this.getNextTile().elmnt.focus();
+                        break;
+                    case "ArrowUp":
+                        console.log(this.getPreviousTile());
+                        this.getPreviousTile().elmnt.focus();
+                        break;
+                    case "Enter":
+                    case " ":
+                        this.click();
+                        break;
+                    case "Tab":
+                        if (e.shiftKey) pathParts[0].elmnt.focus(); 
+                }
+            }
+            generateElement() {
+                this.elmnt = document.createElement("div");
+                this.elmnt.classList.add("tile");
+                this.elmnt.instance = this;
+                this.elmnt.onclick = this.click.bind(this);
+                this.elmnt.setAttribute("tabindex", 0);
+                this.elmnt.setAttribute("role", "listitem");
+                this.elmnt.onkeydown = this.handleKeyPress.bind(this);
+
+                this.icon = document.createElement("span");
+                this.icon.appendChild(document.createTextNode(this.getIcon()));
+                this.icon.classList.add("material-icons");
+                this.elmnt.appendChild(this.icon);
+
+                this.nameSpan = document.createElement("span");
+                this.nameSpan.appendChild(document.createTextNode(this.name));
+                this.elmnt.appendChild(this.nameSpan);
+            }
+            click() {
+                document.location.pathname += "/" + this.name;
+            }
+            getIcon() {
+                if (this.isFile) return "description";
+                if (this.isDirectory) return "folder";
+                if (this.isSymbolicLink) return "open_in_new";
+            }
+        }
+
+        class PathPart {
+            constructor(path, i) {
+                i = Number(i);
+                this.targetURL = path.slice(0, i + 1).join("/");
+                console.log(path[i], i, i + 1, this.targetURL);
+
+                this.elmnt = document.createElement("div");
+                this.elmnt.setAttribute("tabindex", 0);
+                this.elmnt.instance = this;
+                this.elmnt.classList.add("pathpart");
+                this.elmnt.onclick = this.click.bind(this);
+                this.elmnt.onkeydown = this.handleKeyPress.bind(this);
+
+                this.separator = document.createElement("span");
+                if (i > 0) this.separator.innerHTML = "chevron_right";
+                else this.separator.innerHTML = "storage";
+
+                this.separator.classList.add("pathseparator");
+                this.separator.classList.add("material-icons");
+                this.elmnt.appendChild(this.separator);
+
+                this.folderName = document.createElement("span");
+                this.folderName.appendChild(document.createTextNode(path[i] ?? ""));
+                this.folderName.classList.add("pathfoldername");
+                this.elmnt.appendChild(this.folderName);
+            }
+            getNextPart() {
+                let index = Math.min(pathParts.indexOf(this) + 1, pathParts.length - 1);
+                return pathParts[index];
+            }
+
+            getPreviousPart() {
+                let index = Math.max(pathParts.indexOf(this) - 1, 0);
+                return pathParts[index];
+            }
+
+            handleKeyPress(e) {
+                console.log(this);
+                switch (e.key) {
+                    case "ArrowDown":
+                    case "ArrowRight":
+                        console.log(this.getNextPart().elmnt);
+                        this.getNextPart().elmnt.focus();
+                        break;
+                    case "ArrowUp":
+                    case "ArrowLeft":
+                        console.log(this.getPreviousPart());
+                        this.getPreviousPart().elmnt.focus();
+                        break;
+                    case "Enter":
+                    case " ":
+                        this.click();
+                        break;
+                    case "Tab":
+                        if (!e.shiftKey) tiles[0].elmnt.focus();
+                }
+                console.log(e.key);
+            }
+            click() {
+                document.location.pathname = this.targetURL;
+            }
+        }
+
+
+        let vh = window.innerHeight * 0.01;
+        document.documentElement.style.setProperty('--vh', `${vh}px`);
+        let pathParts = []
+        let path = ["", ...unescape(document.location.pathname).split("/").filter(entry => entry.trim() != "")];
+        for (let i in path) {
+            let part = new PathPart(path, i);
+            pathParts.push(part);
+            document.querySelector("nav").appendChild(part.elmnt);
+        }
+        let tiles = []
+        const dirlist = __DIRLIST; // replaced by main.js
+        if (dirlist.length == 0) {
+            document.querySelector("main").appendChild(document.createTextNode("Directory empty"));
+            document.querySelector("main").classList.add("emptyDir");
+        }
+        for (let i of dirlist) {
+            tile = new Tile(i.name, i.isFile, i.isDirectory, i.isSymbolicLink, i.mimeType);
+            document.querySelector("main").appendChild(tile.elmnt);
+            tiles.push(tile);
+        }
+        tiles[0].elmnt.focus();
+
+    </script>
+</body>
+
+</html>
